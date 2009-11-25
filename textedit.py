@@ -56,7 +56,8 @@ class TextEdit(QMainWindow):
         self.setupFileActions()
         self.setupEditActions()
         self.setupTextActions()
-        
+        self.setupFindBar()
+                
         self.helpMenu = QMenu(tr("Help"), self)
         self.menuBar().addMenu(self.helpMenu)
         self.helpMenu.addAction(tr("About"), self.about)
@@ -97,12 +98,15 @@ class TextEdit(QMainWindow):
         # Copy/paste
         self.actionCut.setEnabled(False)
         self.actionCopy.setEnabled(False)
-        self.connect(self.actionCut, SIGNAL("triggered()"), self.textEdit, SLOT("cut()"));
-        self.connect(self.actionCopy, SIGNAL("triggered()"), self.textEdit, SLOT("copy()"));
-        self.connect(self.actionPaste, SIGNAL("triggered()"), self.textEdit, SLOT("paste()"));
+        self.connect(self.actionCut, SIGNAL("triggered()"), self.textEdit, SLOT("cut()"))
+        self.connect(self.actionCopy, SIGNAL("triggered()"), self.textEdit, SLOT("copy()"))
+        self.connect(self.actionPaste, SIGNAL("triggered()"), self.textEdit, SLOT("paste()"))
+        self.connect(self.actionFind, SIGNAL("triggered()"), self.textFind)
         self.connect(self.textEdit, SIGNAL("copyAvailable(bool)"), self.actionCut, SLOT("setEnabled(bool)"))
         self.connect(self.textEdit, SIGNAL("copyAvailable(bool)"), self.actionCopy, SLOT("setEnabled(bool)"))
         self.connect(QApplication.clipboard(), SIGNAL("dataChanged()"), self.clipboardDataChanged)
+        
+
 
         # Load initial file
         #initialFile = ":/example.html"
@@ -225,6 +229,14 @@ class TextEdit(QMainWindow):
         tb.addAction(a)
         menu.addAction(a)
         self.actionPaste.setEnabled(not QApplication.clipboard().text().isEmpty())
+        
+        menu.addSeparator()
+        
+        a = self.actionFind = QAction(QIcon(), tr("&Find"), self)
+        a.setShortcut(Qt.CTRL + Qt.Key_F)
+        tb.addAction(a)
+        menu.addAction(a)
+        
 
     def setupTextActions(self):
         tb = QToolBar(self)
@@ -612,5 +624,56 @@ class TextEdit(QMainWindow):
             # Save altered configuration
             save_config()
 
+    def setupFindBar(self):
+        tb = self.findBar = QToolBar(self)
+        tb.setWindowTitle(tr("Find..."))
+        tb.setAllowedAreas(Qt.BottomToolBarArea)
+        self.addToolBar(Qt.BottomToolBarArea, tb)
+        tb.hide()
 
+        w = QLabel("Find: ", self)
+        tb.addWidget(w)
+        
+        w = self.findEdit = QLineEdit(self)
+        self.connect(w, SIGNAL("returnPressed()"), self.findForward)
+        tb.addWidget(w)
+        
+        a = QAction(QIcon(), tr("&Previous"), self)
+        #a.setShortcut(Qt.ALT + Qt.Key_Z)
+        self.connect(a, SIGNAL("triggered()"), self.findBackward)
+        tb.addAction(a)
 
+        a =  QAction(QIcon(), tr("&Next"), self)
+        a.setShortcut(Qt.CTRL + Qt.Key_G)
+        self.connect(a, SIGNAL("triggered()"), self.findForward)
+        tb.addAction(a)
+        
+        a = self.findCase = QAction(QIcon(), tr("Mat&ch case"), self)
+        #a.setShortcut(Qt.CTRL + Qt.Key_G)
+        a.setCheckable(True)
+        tb.addAction(a)
+        
+        s = QShortcut(Qt.Key_Escape, self.findEdit, self.closeFind, self.closeFind, Qt.WidgetShortcut)
+        
+    def closeFind(self):
+        self.findBar.setVisible(False)
+
+    def textFind(self):
+        """Toggle find bar visibility"""
+        self.findBar.setVisible(True)
+        self.findEdit.setSelection(0, len(self.findEdit.text()))
+        self.findEdit.setFocus()
+        
+    def findText(self, text, flags):
+        if len(text)==0:
+            return
+        if self.findCase.isChecked():
+            flags += QTextDocument.FindCaseSensitively
+        self.textEdit.find(text, flags)
+    
+    def findForward(self):
+        self.findText(self.findEdit.text(), QTextDocument.FindFlags())
+
+    def findBackward(self):
+        self.findText(self.findEdit.text(), QTextDocument.FindBackward)
+        
