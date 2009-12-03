@@ -612,6 +612,7 @@ class TextEdit(QMainWindow):
             fmt = self.comboCustomStyle.itemData(s)
             fmt = fmt.toPyObject()
             self.textEdit.setCurrentCharFormat(fmt)
+            self.textEdit.setFocus()
 
     def newCustomStyle(self):
         # Ask for name (and ok/cancel)
