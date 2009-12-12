@@ -33,7 +33,7 @@ def load_config():
         customStyles = pickle.load(f)
         f.close()
     except Exception,e:
-        print "Error loading ",cfgfile
+        print "Error loading ",cfgfile, " assuming an empty file"
 
 def save_config():
     cfgfile = config_file()
