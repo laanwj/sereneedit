@@ -8,8 +8,10 @@ from PyQt4.QtCore import *
 import resources
 from CustomStyles import CustomStyles 
 
-
-# TODO: printing; don't care about that for now
+# TODO: Need way to edit styles palette:
+#    Add style
+#    Delete style
+#    Move style up/down  (especially for quickselect first 10)
 
 def tr(s):
     """Translate string"""
@@ -49,6 +51,12 @@ def save_config():
 
 customStyles = CustomStyles()
 load_config()
+
+_number_keys = [
+Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5,
+Qt.Key_6, Qt.Key_7, Qt.Key_8, Qt.Key_9, Qt.Key_0,
+]
+
 
 class TextEdit(QMainWindow):
     def __init__(self, parent=None):
@@ -236,8 +244,7 @@ class TextEdit(QMainWindow):
         a.setShortcut(Qt.CTRL + Qt.Key_F)
         tb.addAction(a)
         menu.addAction(a)
-        
-
+                
     def setupTextActions(self):
         tb = QToolBar(self)
         tb.setWindowTitle(tr("Format Actions"))
@@ -247,7 +254,7 @@ class TextEdit(QMainWindow):
         self.menuBar().addMenu(menu)
         
         self.actionTextClear = QAction(QIcon(rsrcPath + "/textclear.png"), tr("&Clear formatting"), self)
-        #self.actionTextBold.setShortcut(Qt.CTRL + Qt.Key_B)
+        self.actionTextClear.setShortcut(Qt.CTRL + Qt.Key_D)
         self.connect(self.actionTextClear, SIGNAL("triggered()"), self.clearFormatting)
         tb.addAction(self.actionTextClear)
         menu.addAction(self.actionTextClear)
@@ -378,6 +385,22 @@ class TextEdit(QMainWindow):
         self.actionNewStyle = QAction(QIcon(), tr("New..."), self)
         self.connect(self.actionNewStyle, SIGNAL("triggered()"), self.newCustomStyle)
         tb.addAction(self.actionNewStyle)
+
+        # Hack -- claim CTRL-0-9 for shortcut colors
+        # We really don't want these to be visible inthe menu, but it seems
+        # that is required for an action
+        self.actionFormatShortcut = []
+        from functools import partial
+        for i in xrange(0,20):
+            a = QAction(QIcon(), tr("Style %i") % (i+1), self)
+            if i<10:
+                a.setShortcut(Qt.CTRL + _number_keys[i])
+            else:
+                a.setShortcut(Qt.ALT + _number_keys[i-10])
+            self.actionFormatShortcut.append(a)
+            menu.addAction(a)
+            self.connect(a, SIGNAL("triggered()"), partial(self.textCustomStyle, i+1))
+
         
     # File loading etc
     def load(self, f):
@@ -600,7 +623,17 @@ class TextEdit(QMainWindow):
         self.comboCustomStyle.addItem("[None]")
         idx = 1
         for (name, fmt) in customStyles:
-            self.comboCustomStyle.addItem(name)
+            if idx>0 and idx<10:
+                num = "[%i]" % idx
+            elif idx==10:
+                num = "[0]"
+            elif idx>10 and idx<20:
+                num = "{%i}" % (idx-10)
+            elif idx==20:
+                num = "{0}"
+            else:
+                num = ""
+            self.comboCustomStyle.addItem(num+name)
             self.comboCustomStyle.setItemData(idx, fmt.background(), Qt.BackgroundRole)
             self.comboCustomStyle.setItemData(idx, fmt.font(), Qt.FontRole)
             self.comboCustomStyle.setItemData(idx, fmt.foreground(), Qt.ForegroundRole)
@@ -613,7 +646,7 @@ class TextEdit(QMainWindow):
             fmt = fmt.toPyObject()
             self.textEdit.setCurrentCharFormat(fmt)
             self.textEdit.setFocus()
-
+            
     def newCustomStyle(self):
         # Ask for name (and ok/cancel)
         text,ok = QInputDialog.getText(self, TITLE, "Enter name for new custom style")
@@ -678,3 +711,4 @@ class TextEdit(QMainWindow):
     def findBackward(self):
         self.findText(self.findEdit.text(), QTextDocument.FindBackward)
         
+
